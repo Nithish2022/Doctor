@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, send_file, jsonify
 from werkzeug.utils import secure_filename
-import speech_recognition as sr
 import pytesseract
 from PIL import Image
 import pdfkit

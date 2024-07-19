@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription Generator App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        function addMedicineRow() {
+            const container = document.getElementById('medicine-container');
+            const row = document.createElement('div');
+            row.className = 'medicine-row';
+            row.innerHTML = `
+                <input type="text" name="medicine_name" placeholder="Medicine Name" required>
+                <input type="text" name="dosage" placeholder="Dosage" required>
+                <input type="text" name="duration" placeholder="Duration" required>
+            `;
+            container.appendChild(row);
+        }
+
+        function startSpeechRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                document.getElementById('status').innerText = 'Listening...';
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('doctor-input').value += transcript;
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('status').innerText = 'Error: ' + event.error;
+            };
+
+            recognition.start();
+        }
+
+        function downloadPDF() {
+            const pdfUrl = document.getElementById('pdf-url').value;
+            if (pdfUrl) {
+                window.location.href = pdfUrl;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Prescription Generator</h1>
+
+    <form action="/upload_image" method="POST" enctype="multipart/form-data">
+        <input type="file" name="handwritten_image" accept="image/*" required>
+        <button type="submit">Convert Handwritten Image to Text</button>
+    </form>
+    <p>{{ recognized_text }}</p>
+
+    <form action="/submit_prescription" method="POST">
+        <div id="medicine-container" class="medicine-container">
+            <div class="medicine-row">
+                <input type="text" name="medicine_name" placeholder="Medicine Name" required>
+                <input type="text" name="dosage" placeholder="Dosage" required>
+                <input type="text" name="duration" placeholder="Duration" required>
+            </div>
+        </div>
+        <button type="button" onclick="addMedicineRow()">Add Medicine</button>
+
+        <textarea id="doctor-input" name="doctor_input" placeholder="Doctor's input" required></textarea>
+        <button type="button" onclick="startSpeechRecognition()">Speak</button>
+        <button type="submit">Submit</button>
+        <p id="status"></p>
+    </form>
+
+    {% if prescription_html %}
+    <h2>Prescription Preview</h2>
+    <div class="prescription">
+        {{ prescription_html|safe }}
+    </div>
+    <input type="hidden" id="pdf-url" value="{{ url_for('download_pdf', file=pdf_url) }}">
+    <div class="center-button">
+        <button onclick="downloadPDF()" class="btn">Download PDF</button>
+    </div>
+    {% endif %}
+</body>
+</html>

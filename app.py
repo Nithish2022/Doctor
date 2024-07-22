@@ -1,16 +1,14 @@
-from flask import Flask, render_template, request, send_file, jsonify
+import os
+from flask import Flask, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
-import speech_recognition as sr
 import pytesseract
 from PIL import Image
 import pdfkit
-import os
 
 app = Flask(__name__)
 
-# Tesseract-OCR path for Windows (adjust if needed)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-config = pdfkit.configuration(wkhtmltopdf='C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe')
+pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_PATH', 'tesseract')
+config = pdfkit.configuration(wkhtmltopdf=os.getenv('WKHTMLTOPDF_PATH', 'wkhtmltopdf'))
 
 @app.route('/')
 def index():
@@ -37,22 +35,18 @@ def submit_prescription():
         } for i in range(len(request.form.getlist('medicine_name')))
     ]
 
-    # Render the prescription template HTML
     rendered = render_template('prescription_template.html', doctor_input=doctor_input, medicines=medicines)
 
-    # Save the HTML to a file
     html_filename = 'prescription.html'
     with open(html_filename, 'w') as f:
         f.write(rendered)
 
-    # Convert HTML to PDF
     pdf_filename = 'prescription.pdf'
     options = {
         'enable-local-file-access': ''
     }
     pdfkit.from_file(html_filename, pdf_filename, configuration=config, options=options)
 
-    # Return the rendered HTML and PDF URL
     return render_template('index.html', recognized_text='', doctor_input=doctor_input, medicines=medicines, prescription_html=rendered, pdf_url=pdf_filename)
 
 @app.route('/download_pdf', methods=['GET'])
@@ -61,5 +55,4 @@ def download_pdf():
     return send_file(pdf_filename, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
-
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
